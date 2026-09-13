@@ -1,0 +1,49 @@
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies caches
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.out/
+.next/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Compiled files
+*.log
+
+# PHP specific
+vendor/
+composer.lock
+
+# Others
+coverage/

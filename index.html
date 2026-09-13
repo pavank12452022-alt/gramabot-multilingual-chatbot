@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GramaBot AI - Government Scheme Assistant</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* Message formatting + link styles */
+    .message-bubble a { color: #93c5fd; text-decoration: underline; word-break: break-word; }
+    .message-bubble ul, .message-bubble ol { margin: 6px 0 6px 18px; }
+    .message-bubble p { margin: 6px 0; line-height:1.45 }
+
+    :root{
+      --primary:#6366f1; --bg-card:rgba(255,255,255,0.05);
+      --bg-glass:rgba(255,255,255,0.08); --text-primary:#fff; --border:rgba(255,255,255,0.08);
+      --radius:12px; --radius-lg:16px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Poppins',sans-serif;background:#0f1724;color:var(--text-primary);min-height:100vh}
+    .app-wrapper{display:flex;gap:16px;padding:16px;max-width:1400px;margin:0 auto;height:100vh}
+    /* Sidebar: chats + language */
+    aside.left-panel{width:300px;display:flex;flex-direction:column;gap:12px}
+    .chats-card{background:var(--bg-glass);border:1px solid var(--border);border-radius:12px;padding:12px;overflow:auto;flex:1}
+    .new-chat-btn {
+      display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;border:1px solid var(--border);cursor:pointer;background:transparent;color:#fff;
+    }
+    .chat-item{padding:10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border:1px solid transparent}
+    .chat-item:hover{background:rgba(255,255,255,0.02)}
+    .chat-item.active{background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.2)}
+    .meta-small{font-size:12px;color:rgba(255,255,255,0.7)}
+    .controls{display:flex;gap:8px}
+    button.icon-btn{border:none;background:transparent;color:var(--text-primary);cursor:pointer}
+
+    /* Main chat area */
+    main.chat-area{flex:1;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border:1px solid var(--border)}
+    header.chat-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--border)}
+    .chat-messages{flex:1;padding:20px;overflow:auto}
+    .chat-input{padding:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
+    .input-field{flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-primary)}
+    .input-btn{width:44px;height:44px;border-radius:10px;border:none;cursor:pointer;background:transparent;color:var(--text-primary)}
+    .message{display:flex;gap:12px;margin-bottom:12px}
+    .message.user{justify-content:flex-end}
+    .message .message-bubble{background:var(--bg-card);padding:12px;border-radius:12px;max-width:75%}
+    .message.refusal .message-bubble{background:rgba(255,99,71,0.06);border:1px solid rgba(255,99,71,0.12)}
+    .notification{position:fixed;top:20px;right:20px;background:var(--bg-glass);padding:12px;border-radius:10px;border:1px solid var(--border)}
+    .empty-hint{padding:20px;color:rgba(255,255,255,0.7);text-align:center}
+    .chat-title-input{background:transparent;border:1px dashed var(--border);padding:6px 10px;border-radius:8px;color:var(--text-primary)}
+    button.lang-btn{padding:8px 6px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-primary)}
+    button.lang-btn.active{background:rgba(255,255,255,0.04)}
+  </style>
+</head>
+<body>
+  <div id="notificationContainer"></div>
+
+  <div class="app-wrapper">
+    <!-- LEFT PANEL: new chat + history + language selectors -->
+    <aside class="left-panel">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,var(--primary),#ec4899);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fas fa-robot"></i></div>
+        <div>
+          <div style="font-weight:800;font-size:18px">GramaBot</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.7)">AI Assistant</div>
+        </div>
+      </div>
+
+      <button id="newChatBtn" class="new-chat-btn" title="New Chat"><i class="fas fa-plus"></i> New Chat</button>
+
+      <div class="chats-card" id="chatsList" aria-label="Chat history">
+        <!-- chat items injected here -->
+      </div>
+
+      <div style="background:var(--bg-glass);border:1px solid var(--border);border-radius:12px;padding:12px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Select Language</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+          <button class="lang-btn active" data-lang="en" onclick="setLanguage('en')">English</button>
+          <button class="lang-btn" data-lang="hi" onclick="setLanguage('hi')">हिंदी</button>
+          <button class="lang-btn" data-lang="kn" onclick="setLanguage('kn')">ಕನ್ನಡ</button>
+          <button class="lang-btn" data-lang="te" onclick="setLanguage('te')">తెలుగు</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CHAT AREA -->
+    <main class="chat-area">
+      <header class="chat-header">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <input id="chatTitle" class="chat-title-input" value="New chat" />
+          <div style="font-size:13px;color:rgba(255,255,255,0.7)">Your government scheme companion</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:10px;height:10px;border-radius:50%;background:#10b981"></div>
+            <small>Online</small>
+          </div>
+          <button class="icon-btn" title="Delete chat" onclick="deleteCurrentChat()"><i class="fas fa-trash"></i></button>
+        </div>
+      </header>
+
+      <div id="chatMessages" class="chat-messages"></div>
+      <div id="typingIndicator" style="display:none;padding:8px 20px">GramaBot is typing...</div>
+
+      <footer class="chat-input">
+        <input id="messageInput" class="input-field" placeholder="Ask me anything about government schemes..." />
+        <button class="input-btn" id="voiceBtn" title="Voice" onclick="toggleVoice()"><i class="fas fa-microphone"></i></button>
+        <button class="input-btn primary" id="sendBtn" title="Send"><i class="fas fa-paper-plane"></i></button>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Config
+    const API_BASE = "https://gramabot-multilingual-chatbot.onrender.com"; // backend
+
+    // Chat storage keys & runtime
+    const STORAGE_KEY = 'gramabot_chats_v1';
+    let chats = [];                // array of chat objects {id,title,titleAssigned,createdAt,messages: [{role,content,ts}]}
+    let activeChatId = null;
+    let currentLanguage = 'en';
+
+    // Speech recognition placeholders
+    let recognition = null;
+    let isListening = false;
+
+    // Initial minimal KB for fallback
+    const knowledgeBase = {
+      schemes: {
+        'pm-kisan': { id:'pm-kisan', title:'PM-KISAN Scheme', eligibility:'Small & marginal farmers', benefits:'₹6000/year', howToApply:'Register at pmkisan.gov.in or visit CSC', website:'https://pmkisan.gov.in', keywords:['kisan','farmer','pm-kisan']},
+        'ayushman': { id:'ayushman', title:'Ayushman Bharat - PMJAY', eligibility:'SECC families', benefits:'₹5 lakh cover', howToApply:'Get Golden Card at empaneled hospitals/CSC', website:'https://pmjay.gov.in', keywords:['ayushman','health'] }
+      },
+      translations: {
+        en: { welcome: "Hello! I'm GramaBot. Ask me about schemes, eligibility or how to apply." },
+        hi: { welcome: "नमस्ते! मैं ग्रामाबॉट हूँ। योजनाओं के बारे में पूछें।" },
+        kn: { welcome: "ಹಲೊ! ನಾನು ಗ್ರಾಮಾ ಬಾಟ್. ಯೋಜನೆಗಳ ಬಗ್ಗೆ ಕೇಳಿ." },
+        te: { welcome: "హలో! నేను గ్రామాబాట్. పథకాల గురించి అడుగండి." }
+      }
+    };
+
+    /* ---------- Storage & Chat CRUD ---------- */
+
+    function loadChatsFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        chats = raw ? JSON.parse(raw) : [];
+      } catch (e) { chats = []; }
+      // if no chats exist, create a starter chat
+      if (!chats || chats.length === 0) {
+        const c = createChat('New chat');
+        // ensure this starter chat has no titleAssigned so it will be named on first user message
+        c.titleAssigned = false;
+        chats = [c];
+      }
+      // set activeChatId to newest (first in array) or previous saved id
+      activeChatId = chats[0]?.id || null;
+      saveChatsToStorage();
+      renderChatList();
+      loadActiveChat();
+    }
+
+    function saveChatsToStorage() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); } catch(e){}
+      renderChatList();
+    }
+
+    function createChat(title = 'New chat') {
+      const id = 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+      const chat = { id, title, titleAssigned: false, createdAt: Date.now(), messages: [] };
+      chats.unshift(chat); // newest first
+      activeChatId = id;
+      saveChatsToStorage();
+      renderChatList();
+      loadActiveChat();
+      return chat;
+    }
+
+    function deleteChat(id) {
+      const idx = chats.findIndex(c => c.id === id);
+      if (idx === -1) return;
+      chats.splice(idx, 1);
+      if (activeChatId === id) {
+        activeChatId = chats.length ? chats[0].id : null;
+      }
+      saveChatsToStorage();
+      if (activeChatId) loadActiveChat(); else clearChatMessages();
+    }
+
+    function renameChat(id, newTitle) {
+      const c = chats.find(x => x.id === id);
+      if (!c) return;
+      c.title = newTitle || c.title;
+      c.titleAssigned = true; // user set a title explicitly
+      saveChatsToStorage();
+      renderChatList();
+    }
+
+    function getActiveChat() {
+      return chats.find(c => c.id === activeChatId) || null;
+    }
+
+    /* ---------- Rendering chat list & messages ---------- */
+
+    function renderChatList() {
+      const container = document.getElementById('chatsList');
+      container.innerHTML = '';
+      if (!chats.length) { container.innerHTML = '<div class="empty-hint">No chats yet</div>'; return; }
+      chats.forEach(chat => {
+        const div = document.createElement('div');
+        div.className = 'chat-item' + (chat.id === activeChatId ? ' active' : '');
+        div.title = chat.title || 'Chat';
+        div.onclick = () => { activeChatId = chat.id; loadActiveChat(); renderChatList(); };
+        const left = document.createElement('div');
+        left.innerHTML = `<div style="font-weight:600">${escapeHtml(chat.title)}</div><div class="meta-small">${new Date(chat.createdAt).toLocaleString()}</div>`;
+        const right = document.createElement('div');
+        right.className = 'controls';
+        const del = document.createElement('button'); del.className='icon-btn'; del.title='Delete'; del.innerHTML = '<i class="fas fa-trash"></i>';
+        del.onclick = (e) => { e.stopPropagation(); if (confirm('Delete chat?')) deleteChat(chat.id); };
+        const rename = document.createElement('button'); rename.className='icon-btn'; rename.title='Rename'; rename.innerHTML = '<i class="fas fa-edit"></i>';
+        rename.onclick = (e) => { e.stopPropagation(); const t = prompt('New chat title', chat.title); if (t!==null) { renameChat(chat.id, t); if (chat.id === activeChatId) document.getElementById('chatTitle').value = t; } };
+        right.appendChild(rename); right.appendChild(del);
+        div.appendChild(left); div.appendChild(right);
+        container.appendChild(div);
+      });
+    }
+
+    function loadActiveChat() {
+      const chat = getActiveChat();
+      if (!chat) { clearChatMessages(); document.getElementById('chatTitle').value = 'No chat'; return; }
+      document.getElementById('chatTitle').value = chat.title || 'Chat';
+      renderMessages(chat.messages);
+    }
+
+    function clearChatMessages() {
+      document.getElementById('chatMessages').innerHTML = '<div class="empty-hint">Start a new chat by typing below or click "New Chat".</div>';
+    }
+
+    function renderMessages(messages = []) {
+      const container = document.getElementById('chatMessages');
+      container.innerHTML = '';
+      if (!messages.length) { clearChatMessages(); return; }
+      messages.forEach(m => {
+        if (m.role === 'user') {
+          const d = document.createElement('div'); d.className = 'message user';
+          d.innerHTML = `<div class="message-bubble" style="background:transparent;border:1px solid var(--border)">${escapeHtml(m.content)}</div>`;
+          container.appendChild(d);
+        } else {
+          const d = document.createElement('div'); d.className = 'message bot' + (m.refused ? ' refusal' : '');
+          const bubble = document.createElement('div'); bubble.className = 'message-bubble';
+          bubble.innerHTML = parseMessageToHtml(m.content || '');
+          bubble.querySelectorAll && bubble.querySelectorAll('a').forEach(a => a.setAttribute('target','_blank'));
+          d.appendChild(bubble);
+          container.appendChild(d);
+        }
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    /* ---------- Chat interaction: send, save, fallback ---------- */
+
+    function appendMessageToActive(role, content, extra = {}) {
+      const chat = getActiveChat();
+      if (!chat) return;
+      // If first user message and title not assigned, generate a title
+      if (role === 'user' && !chat.titleAssigned) {
+        const gen = generateChatTitle(content);
+        if (gen) { chat.title = gen; chat.titleAssigned = true; document.getElementById('chatTitle').value = gen; }
+      }
+      const msg = Object.assign({ role, content, ts: Date.now() }, extra);
+      chat.messages.push(msg);
+      saveChatsToStorage();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const message = (input.value || '').trim();
+      if (!message) return;
+
+      // ensure a chat exists and append the user message
+      if (!getActiveChat()) createChat('New chat');
+      appendMessageToActive('user', message);
+      renderMessages(getActiveChat().messages);
+      input.value = '';
+      showTyping(true);
+
+      // prepare safe sanitized history to send
+      const activeChat = getActiveChat();
+      let history = [];
+      if (activeChat && Array.isArray(activeChat.messages)) {
+        history = activeChat.messages
+          .map(m => ({ role: m.role === 'user' ? 'user' : 'bot', content: String(m.content || '') }))
+          .filter(h => typeof h.content === 'string' && h.content.trim().length > 0);
+      }
+
+      // trim local history (send last 12)
+      const MAX_HISTORY = 12;
+      if (history.length > MAX_HISTORY) history = history.slice(history.length - MAX_HISTORY);
+
+      const payload = { query: message, lang: currentLanguage, history };
+
+      console.log('---> POST /ask', payload);
+
+      fetch(API_BASE + '/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(async r => {
+        // make sure typing indicator always turns off
+        showTyping(false);
+
+        if (!r.ok) {
+          // if server returned non-JSON or error, try to show something useful
+          const txt = await r.text().catch(() => null);
+          console.error('Server error', r.status, txt);
+          throw new Error('Server error: ' + r.status);
+        }
+        return r.json();
+      })
+      .then(data => {
+        console.log('<--- /ask response', data);
+
+        // If server refused (not a scheme query) show the refusal message but mark as "refused"
+        if (data && data.refused) {
+          appendMessageToActive('bot', data.response || 'I can only help with Indian government schemes.', { refused: true });
+          renderMessages(getActiveChat().messages);
+          return;
+        }
+
+        // If the backend used local fallback (fallback: true) or normal AI response
+        const respText = (data && (data.response || data.message)) || 'Sorry, no response.';
+        appendMessageToActive('bot', respText);
+        renderMessages(getActiveChat().messages);
+      })
+      .catch(err => {
+        console.error('Fetch /ask failed', err);
+        showTyping(false);
+
+        // local fallback: try your minimal knowledgeBase
+        const lower = message.toLowerCase();
+        let found = null;
+        Object.values(knowledgeBase.schemes).forEach(s => {
+          if ((s.keywords && s.keywords.some(k => lower.includes(k))) || lower.includes(s.title.toLowerCase())) found = s;
+        });
+        if (found) {
+          const formatted = formatScheme(found);
+          appendMessageToActive('bot', formatted);
+          renderMessages(getActiveChat().messages);
+        } else {
+          // fallback refusal — server unreachable
+          appendMessageToActive('bot', 'Network or server error — please try again later.', { refused: true });
+          renderMessages(getActiveChat().messages);
+        }
+      });
+    }
+
+    function deleteCurrentChat() {
+      if (!activeChatId) return;
+      if (!confirm('Delete current chat?')) return;
+      deleteChat(activeChatId);
+    }
+
+    /* ---------- Auto-title generation (new) ---------- */
+
+    function generateChatTitle(userMessage) {
+      if (!userMessage) return "Conversation";
+      let text = userMessage.toLowerCase().trim();
+      text = text.replace(/https?:\/\/\S+/g, "");
+      const stopwords = ["what","is","are","about","the","a","an","explain","information","details","give","tell","me","please","need","want","how","to","apply","scheme","schemes"];
+      let words = text.split(/\s+/).filter(w => w.length > 2 && !stopwords.includes(w));
+      if (words.length === 0) return "Conversation";
+      words = words.slice(0,3);
+      const title = words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      return title.length > 40 ? title.slice(0,37) + "..." : title;
+    }
+
+    /* ---------- Existing renderer & helpers (safe markdown-like) ---------- */
+
+    function parseMessageToHtml(raw) {
+      if (!raw) return '';
+      const text = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+      const esc = escapeHtml(text);
+      const mdLinkToken = '<<MDLINK'; let linkIndex = 0; const mdLinks = [];
+      const step1 = esc.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) => { mdLinks.push({label, url}); return `${mdLinkToken}${linkIndex++}>>`; });
+      const step2 = step1.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      const lines = step2.split('\n');
+      let out = ''; let inUl = false; let inOl = false;
+      function closeLists(){ if(inUl){ out += '</ul>'; inUl=false;} if(inOl){ out += '</ol>'; inOl=false;} }
+      for (let i=0;i<lines.length;i++){
+        let line = lines[i].trim();
+        if (line === '') { closeLists(); out += '<p></p>'; continue; }
+        if (/^\d+\.\s+/.test(line)) {
+          if (!inOl) { closeLists(); out += '<ol>'; inOl = true; }
+          const item = line.replace(/^\d+\.\s+/, '');
+          out += `<li>${autoLinkInline(item, mdLinks, mdLinkToken)}</li>`;
+          continue;
+        }
+        if (/^(\*|•|-)\s+/.test(line)) {
+          if (!inUl) { closeLists(); out += '<ul>'; inUl = true; }
+          const item = line.replace(/^(\*|•|-)\s+/, '');
+          out += `<li>${autoLinkInline(item, mdLinks, mdLinkToken)}</li>`;
+          continue;
+        }
+        closeLists();
+        out += `<p>${autoLinkInline(line, mdLinks, mdLinkToken)}</p>`;
+      }
+      closeLists();
+      out = out.replace(/^(<p><\/p>)+/, '').replace(/(<p><\/p>)+$/, '');
+      return out;
+    }
+
+    function autoLinkInline(text, mdLinks, mdLinkToken) {
+      text = text.replace(new RegExp(mdLinkToken + '(\\d+)>>', 'g'), (_, idx) => {
+        const i = Number(idx);
+        if (!mdLinks[i]) return '';
+        const labelEsc = escapeHtml(mdLinks[i].label);
+        const urlEsc = escapeHtml(mdLinks[i].url);
+        return `<a href="${urlEsc}" rel="noopener noreferrer">${labelEsc}</a>`;
+      });
+      const urlRegex = /(?<!["'>])\b(https?:\/\/[^\s<>"'()]+)/g;
+      text = text.replace(urlRegex, (m) => {
+        const u = escapeHtml(m);
+        return `<a href="${u}" rel="noopener noreferrer">${u}</a>`;
+      });
+      return text;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function formatScheme(s){
+      // returns markdown-like string so renderer will convert links & bold
+      return `**${s.title}**\n• Eligibility: ${s.eligibility}\n• Benefits: ${s.benefits}\n• How to apply: ${s.howToApply}\n• Website: [${s.website}](${s.website})`;
+    }
+
+    function showTyping(show){ document.getElementById('typingIndicator').style.display = show ? 'block' : 'none'; }
+
+    /* ---------- Language, voice, UI hooks ---------- */
+
+    function setLanguage(lang) {
+      currentLanguage = lang;
+      document.querySelectorAll('button.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+      if (recognition) {
+        const langCodes = { en:'en-IN', hi:'hi-IN', kn:'kn-IN', te:'te-IN' };
+        recognition.lang = langCodes[lang] || 'en-IN';
+      }
+      showNotification('Language switched', 'success', 1200);
+    }
+
+    function initSpeechRecognition() {
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-IN';
+        recognition.onstart = () => { isListening = true; showNotification('Listening...', 'info', 1200); };
+        recognition.onresult = (e) => { document.getElementById('messageInput').value = e.results[0][0].transcript; };
+        recognition.onend = () => { isListening = false; };
+        recognition.onerror = (e) => { showNotification('Voice error: ' + (e.error||'unknown'), 'error'); };
+      }
+    }
+
+    function toggleVoice(){
+      if (!recognition) { showNotification('Voice not supported', 'error'); return; }
+      try { if (isListening) recognition.stop(); else recognition.start(); } catch(e) { showNotification('Unable to start voice', 'error'); }
+    }
+
+    function showNotification(msg, type='info', duration=2000){
+      const container = document.getElementById('notificationContainer');
+      const n = document.createElement('div'); n.className = 'notification'; n.textContent = msg;
+      container.appendChild(n);
+      setTimeout(()=> n.remove(), duration);
+    }
+
+    /* ---------- UI bindings & init ---------- */
+
+    document.getElementById('newChatBtn').addEventListener('click', () => {
+      createChat('New chat');
+    });
+
+    document.getElementById('chatTitle').addEventListener('change', (e) => {
+      const v = e.target.value.trim() || 'Chat';
+      const ch = getActiveChat();
+      if (!ch) return;
+      ch.title = v; ch.titleAssigned = true; saveChatsToStorage(); renderChatList();
+    });
+
+    document.getElementById('messageInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+
+    // initial load
+    document.addEventListener('DOMContentLoaded', () => {
+      initSpeechRecognition();
+      loadChatsFromStorage();
+      // ensure welcome message in first chat if empty
+      const active = getActiveChat();
+      if (active && active.messages.length === 0) {
+        const welcome = knowledgeBase.translations[currentLanguage].welcome;
+        appendMessageToActive('bot', welcome);
+        renderMessages(getActiveChat().messages);
+      }
+    });
+
+    // Expose for debugging
+    window.GramaBot = { createChat, deleteChat, sendMessage, setLanguage };
+  </script>
+
+</body>
+</html>
